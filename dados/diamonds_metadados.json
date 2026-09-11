@@ -1,0 +1,84 @@
+{
+  "fonte": "https://openml.org/data/v1/download/21792853/diamonds.arff",
+  "openml_id": 42225,
+  "relacao": "diamonds",
+  "extraido_em": "2026-09-10T13:10:10+00:00",
+  "linhas": 53940,
+  "atributos": [
+    {
+      "nome": "carat",
+      "tipo": "REAL",
+      "niveis": null
+    },
+    {
+      "nome": "cut",
+      "tipo": "nominal",
+      "niveis": [
+        "Fair",
+        "Good",
+        "Ideal",
+        "Premium",
+        "Very Good"
+      ]
+    },
+    {
+      "nome": "color",
+      "tipo": "nominal",
+      "niveis": [
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J"
+      ]
+    },
+    {
+      "nome": "clarity",
+      "tipo": "nominal",
+      "niveis": [
+        "I1",
+        "IF",
+        "SI1",
+        "SI2",
+        "VS1",
+        "VS2",
+        "VVS1",
+        "VVS2"
+      ]
+    },
+    {
+      "nome": "depth",
+      "tipo": "REAL",
+      "niveis": null
+    },
+    {
+      "nome": "table",
+      "tipo": "REAL",
+      "niveis": null
+    },
+    {
+      "nome": "price",
+      "tipo": "INTEGER",
+      "niveis": null
+    },
+    {
+      "nome": "x",
+      "tipo": "REAL",
+      "niveis": null
+    },
+    {
+      "nome": "y",
+      "tipo": "REAL",
+      "niveis": null
+    },
+    {
+      "nome": "z",
+      "tipo": "REAL",
+      "niveis": null
+    }
+  ],
+  "sha256_arff": "0bbef7a24061e5cc4e8591eea59417948a2d2286401675b57163a555e1849b40",
+  "sha256_csv": "0e7164799468299f8dc09b006cf396c43717c3dc71f947f0a32cc6e199895b46"
+}
