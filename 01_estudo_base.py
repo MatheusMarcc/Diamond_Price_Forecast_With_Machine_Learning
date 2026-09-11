@@ -25,6 +25,8 @@ import matplotlib
 
 matplotlib.use("Agg")  # sem janela: salva direto em arquivo
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
+import matplotlib.patches as patches
 import numpy as np
 import pandas as pd
 
@@ -53,7 +55,7 @@ def figura(nome: str) -> Path:
     FIGURAS.mkdir(parents=True, exist_ok=True)
     return FIGURAS / nome
 
-
+# Desbalanceamento
 def distribuicao_do_alvo(y: pd.Series) -> None:
     fig, eixos = plt.subplots(1, 2, figsize=(11, 4))
     eixos[0].hist(y, bins=80, color="#2F6690", edgecolor="none")
@@ -72,24 +74,61 @@ def distribuicao_do_alvo(y: pd.Series) -> None:
     plt.close(fig)
 
 
+# Analise de correlação
 def matriz_correlacao(df: pd.DataFrame) -> pd.DataFrame:
     colunas = D.NUMERICAS + [D.ALVO]
-    cor = df[colunas].corr()
+    dados = df[colunas].to_numpy(dtype=float)
+    n_cols = dados.shape[1]
 
+    matriz_cor = np.zeros((n_cols, n_cols))
+    
+    for i in range(n_cols):
+        for j in range(n_cols):
+            x = dados[:, i]
+            y = dados[:, j]
+            
+            # Diferença de cada valor para a média da sua coluna
+            diff_x = x - np.mean(x)
+            diff_y = y - np.mean(y)
+            
+            # Aplicação da fórmula
+            numerador = np.sum(diff_x * diff_y)
+            denominador = np.sqrt(np.sum(diff_x**2) * np.sum(diff_y**2))
+            
+            if denominador == 0:
+                matriz_cor[i, j] = 0.0
+            else:
+                matriz_cor[i, j] = numerador / denominador # r - pearson 
+
+    # Convertendo de volta para DataFrame para manter a compatibilidade com o gráfico
+    cor = pd.DataFrame(matriz_cor, index=colunas, columns=colunas)
+
+    meu_cmap = LinearSegmentedColormap.from_list("vermelho_verde", ["#d62728", "white", "#2ca02c"])
     fig, eixo = plt.subplots(figsize=(7.5, 6.5))
-    imagem = eixo.imshow(cor, cmap="RdBu_r", vmin=-1, vmax=1)
-    eixo.set_xticks(range(len(colunas)), colunas, rotation=45, ha="right")
-    eixo.set_yticks(range(len(colunas)), colunas)
+    
+    # Aplicando o novo mapa de cores
+    imagem = eixo.imshow(cor, cmap=meu_cmap, vmin=-1, vmax=1)
+    
+    # Invertendo o eixo Y para a diagonal ir do canto inferior esquerdo ao superior direito
+    eixo.invert_yaxis()
+    
+    eixo.set_xticks(range(len(colunas)))
+    eixo.set_xticklabels(colunas, rotation=45, ha="right")
+    eixo.set_yticks(range(len(colunas)))
+    eixo.set_yticklabels(colunas)
+    
     for i in range(len(colunas)):
         for j in range(len(colunas)):
             valor = cor.iloc[i, j]
-            eixo.text(j, i, f"{valor:.2f}", ha="center", va="center",
+            eixo.text(j, i, f"{valor:.3f}", ha="center", va="center",
                       fontsize=8, color="white" if abs(valor) > 0.55 else "black")
+            
     fig.colorbar(imagem, ax=eixo, shrink=0.8)
-    eixo.set_title("Correlação de Pearson", fontweight="bold")
+    eixo.set_title("Matriz de Correlação dos atributos - Diamonds", fontweight="bold")
     fig.tight_layout()
     fig.savefig(figura("02_correlacao.png"), dpi=150)
     plt.close(fig)
+    
     return cor
 
 
@@ -106,7 +145,7 @@ def contagem_categoricas(df: pd.DataFrame) -> None:
     fig.savefig(figura("03_categoricas.png"), dpi=150)
     plt.close(fig)
 
-
+# Clusterização com T-SNE
 def tsne(df: pd.DataFrame, tamanho: int, semente: int) -> None:
     try:
         from sklearn.manifold import TSNE
@@ -151,7 +190,7 @@ def tsne(df: pd.DataFrame, tamanho: int, semente: int) -> None:
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--amostra-tsne", type=int, default=5000, help="pontos usados no t-SNE")
+    p.add_argument("--amostra-tsne", type=int, default=25000, help="pontos usados no t-SNE")
     p.add_argument("--semente", type=int, default=42)
     args = p.parse_args()
 

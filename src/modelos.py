@@ -20,7 +20,7 @@ def _com_intercepto(X: np.ndarray) -> np.ndarray:
     X = np.asarray(X, dtype=float)
     if X.ndim != 2:
         raise ValueError(f"X deve ser 2-D, recebi shape {X.shape}")
-    return np.column_stack([np.ones(len(X)), X])
+    return np.column_stack([np.ones(len(X)), X])   #formula Slide aula 4 
 
 
 def _conferir(A: np.ndarray, y: np.ndarray) -> np.ndarray:
@@ -51,7 +51,11 @@ class RegressaoLinearFechada:
         # TODO: resolver (AᵀA) w = Aᵀy e guardar o resultado em self.w_
         # Dica: np.linalg.solve(...) e mais estavel e mais rapido do que
         # inverter AᵀA explicitamente com np.linalg.inv.
-        raise NotImplementedError("implemente as equacoes normais")
+
+        # (A^T A) w = A^T y
+        self.w_ = np.linalg.solve(A.T @ A, A.T @ y)
+
+        #raise NotImplementedError("implemente as equacoes normais")
 
         return self
 
@@ -108,7 +112,12 @@ class RegressaoLinearGD:
         for epoca in range(self.epocas):
             # TODO: calcular o gradiente conforme a formula do docstring
             #       e atualizar w dando um passo de tamanho self.taxa
-            raise NotImplementedError("implemente o passo do Gradient Descent")
+            # 1. Calcula o vetor gradiente
+            gradiente = (2 / n) * A.T @ (A @ w - y)
+            
+            # 2. Atualiza os pesos (w) dando o passo negativo do gradiente
+            w = w - self.taxa * gradiente
+            #raise NotImplementedError("implemente o passo do Gradient Descent")
 
             self.historico_["custo"].append(self.custo(A, y, w))
             self.historico_["norma_gradiente"].append(float(np.linalg.norm(gradiente)))

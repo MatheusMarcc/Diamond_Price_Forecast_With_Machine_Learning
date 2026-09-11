@@ -2,7 +2,7 @@
   "fonte": "https://openml.org/data/v1/download/21792853/diamonds.arff",
   "openml_id": 42225,
   "relacao": "diamonds",
-  "extraido_em": "2026-09-10T13:10:10+00:00",
+  "extraido_em": "2026-09-11T13:38:51+00:00",
   "linhas": 53940,
   "atributos": [
     {
