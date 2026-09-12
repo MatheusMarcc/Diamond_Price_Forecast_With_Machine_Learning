@@ -1,113 +1,68 @@
-#!/usr/bin/env python3
-"""Treino e comparação entre configurações e entre os dois algoritmos.
-
-Responde aos itens "avalie os dados com R2 e MSE" e "faça uma análise de
-performance dos tipos de regressão".
-
-Compara quatro configurações — codificação ordinal ou one-hot, alvo em dólares
-ou em log — cada uma treinada pelas equações normais e por Gradient Descent.
-Quando o alvo é log, as previsões voltam para dólares antes de medir; senão as
-métricas não são comparáveis entre as linhas da tabela.
-
-Uso:
-    python 02_treino.py
-    python 02_treino.py --taxa 0.05 --epocas 5000
-"""
-from __future__ import annotations
-
-import argparse
-import sys
-import time
-from pathlib import Path
-
+import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
+from src import dados as D
+from src.modelos import RegressaoLinearFechada, GradienteDrescedente
 
-RAIZ = Path(__file__).resolve().parent
-sys.path.insert(0, str(RAIZ))
-from src import dados as D  # noqa: E402
-from src import metricas as M  # noqa: E402
-from src.modelos import RegressaoLinearFechada, RegressaoLinearGD  # noqa: E402
+def main():
+    # Carregando os dados simples
+    conjunto = D.preparar(codificacao="ordinal", alvo_em_log=False, semente=42)
+    X_treino, y_treino = conjunto["X_treino"], conjunto["y_treino"]
+    colunas = conjunto["colunas"]
 
-RESULTADOS = RAIZ / "resultados"
+    # ========================================================
+    # 1. ANÁLISE DOS PESOS
+    # ========================================================
+    print("Gerando gráfico de pesos...")
+    modelo_fechado = RegressaoLinearFechada().treinar(X_treino, y_treino)
+    pesos = modelo_fechado.coef_
+    
+    plt.figure(figsize=(10, 6))
+    plt.barh(colunas, pesos, color=["#B4553B" if p < 0 else "#2F6690" for p in pesos])
+    plt.axvline(0, color="black", linewidth=1)
+    plt.title("Pesos Atribuídos a Cada Característica", fontweight="bold")
+    plt.xlabel("Valor do Peso")
+    plt.tight_layout()
+    plt.show()
 
+    # ========================================================
+    # 2. CONVERGÊNCIA (Onde os parâmetros param de mudar?)
+    # ========================================================
+    print("Gerando gráfico de convergência do Gradiente Descendente...")
+    gd = GradienteDrescedente(taxa=0.1, epocas=1000).treinar(X_treino, y_treino)
+    
+    plt.figure(figsize=(8, 5))
+    plt.plot(gd.historico_["custo"], color="#2F6690", linewidth=2)
+    plt.title("Variação do Erro (MSE) por Época", fontweight="bold")
+    plt.xlabel("Épocas (Iterações)")
+    plt.ylabel("Custo (Erro)")
+    plt.grid(True, linestyle="--", alpha=0.6)
+    plt.tight_layout()
+    plt.show()
+    
+    print(f"Os pesos pararam de sofrer grandes alterações por volta da época {gd.epocas_executadas_}.")
 
-def medir(modelo, conjunto: dict, particao: str) -> dict:
-    """Avalia sempre na escala de dólares, mesmo se o treino foi em log."""
-    X, y = conjunto[f"X_{particao}"], conjunto[f"y_{particao}"]
-    previsto = modelo.prever(X)
-    if conjunto["alvo_em_log"]:
-        y, previsto = M.desfazer_log(y), M.desfazer_log(previsto)
-    return M.avaliar(y, previsto)
-
-
-def main() -> None:
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--taxa", type=float, default=0.1, help="taxa de aprendizado do GD")
-    p.add_argument("--epocas", type=int, default=5000)
-    p.add_argument("--semente", type=int, default=42)
-    args = p.parse_args()
-
-    RESULTADOS.mkdir(parents=True, exist_ok=True)
-    linhas = []
-
-    for codificacao in ("ordinal", "onehot"):
-        for alvo_em_log in (False, True):
-            conjunto = D.preparar(
-                codificacao=codificacao, alvo_em_log=alvo_em_log, semente=args.semente
-            )
-            rotulo = f"{codificacao}/{'log' if alvo_em_log else 'USD'}"
-            print(f"\n{rotulo}  —  {conjunto['X_treino'].shape[1]} preditoras, "
-                  f"{len(conjunto['y_treino']):,} treino / {len(conjunto['y_teste']):,} teste")
-
-            for nome, modelo in (
-                ("equacoes normais", RegressaoLinearFechada()),
-                ("gradient descent", RegressaoLinearGD(taxa=args.taxa, epocas=args.epocas)),
-            ):
-                inicio = time.perf_counter()
-                modelo.treinar(conjunto["X_treino"], conjunto["y_treino"])
-                duracao = time.perf_counter() - inicio
-
-                treino, teste = medir(modelo, conjunto, "treino"), medir(modelo, conjunto, "teste")
-                linhas.append({
-                    "codificacao": codificacao,
-                    "alvo": "log" if alvo_em_log else "USD",
-                    "metodo": nome,
-                    "r2_treino": treino["r2"], "r2_teste": teste["r2"],
-                    "mse_teste": teste["mse"], "rmse_teste": teste["rmse"],
-                    "segundos": duracao,
-                    "epocas": getattr(modelo, "epocas_executadas_", None),
-                })
-                print(f"  {nome:18} R²treino={treino['r2']:.4f}  R²teste={teste['r2']:.4f}  "
-                      f"RMSE={teste['rmse']:9.2f} USD  ({duracao:.3f}s)")
-
-    tabela = pd.DataFrame(linhas)
-    tabela.to_csv(RESULTADOS / "metricas.csv", index=False)
-
-    melhor = tabela.loc[tabela.r2_teste.idxmax()]
-    print(f"\nmelhor configuracao: {melhor.codificacao}/{melhor.alvo} por {melhor.metodo}"
-          f"  →  R² teste {melhor.r2_teste:.4f}, RMSE {melhor.rmse_teste:.2f} USD")
-
-    # Os dois algoritmos resolvem o mesmo problema: têm que chegar no mesmo w.
-    print("\nCONFERENCIA: Gradient Descent contra a solucao exata")
-    conjunto = D.preparar(codificacao="ordinal", alvo_em_log=False, semente=args.semente)
-    fechada = RegressaoLinearFechada().treinar(conjunto["X_treino"], conjunto["y_treino"])
-    gd = RegressaoLinearGD(taxa=args.taxa, epocas=args.epocas).treinar(
-        conjunto["X_treino"], conjunto["y_treino"]
-    )
-    print(f"  epocas executadas            {gd.epocas_executadas_:,}")
-    print(f"  maior diferenca entre pesos  {np.max(np.abs(gd.w_ - fechada.w_)):.3e}")
-    print(f"  R² teste (equacoes normais)  {medir(fechada, conjunto, 'teste')['r2']:.6f}")
-    print(f"  R² teste (gradient descent)  {medir(gd, conjunto, 'teste')['r2']:.6f}")
-
-    print(f"\ntabela salva em {RESULTADOS / 'metricas.csv'}")
-
+    # ========================================================
+    # 3. EFEITO DA TAXA DE APRENDIZADO
+    # ========================================================
+    print("Gerando comparação de Taxas de Aprendizado...")
+    taxas_para_testar = [0.001, 0.05, 0.1]
+    cores = ["#B4553B", "#1F918B", "#2F6690"]
+    
+    plt.figure(figsize=(8, 5))
+    for taxa, cor in zip(taxas_para_testar, cores):
+        try:
+            modelo = GradienteDrescedente(taxa=taxa, epocas=500).treinar(X_treino, y_treino)
+            plt.plot(modelo.historico_["custo"], color=cor, label=f"Taxa = {taxa}")
+        except:
+            print(f"A taxa {taxa} fez o modelo explodir (divergiu)!")
+            
+    plt.title("Efeito de Diferentes Taxas de Aprendizado", fontweight="bold")
+    plt.xlabel("Épocas (Iterações)")
+    plt.ylabel("Custo (Erro)")
+    plt.legend()
+    plt.grid(True, linestyle="--", alpha=0.6)
+    plt.tight_layout()
+    plt.show()
 
 if __name__ == "__main__":
-    try:
-        main()
-    except NotImplementedError as erro:
-        print(f"\nFalta implementar: {erro}")
-        print("Os dois TODO estao em src/modelos.py — "
-              "RegressaoLinearFechada.treinar e RegressaoLinearGD.treinar.")
-        raise SystemExit(1)
+    main()

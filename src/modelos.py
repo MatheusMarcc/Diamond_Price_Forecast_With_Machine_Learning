@@ -73,7 +73,7 @@ class RegressaoLinearFechada:
         return self.w_[1:]
 
 
-class RegressaoLinearGD:
+class GradienteDrescedente:
     """Mesma solução, alcançada por descida de gradiente.
 
     Função de custo (erro quadrático médio):
@@ -101,7 +101,7 @@ class RegressaoLinearGD:
     def custo(self, A: np.ndarray, y: np.ndarray, w: np.ndarray) -> float:
         return float(np.mean((A @ w - y) ** 2))
 
-    def treinar(self, X: np.ndarray, y: np.ndarray) -> "RegressaoLinearGD":
+    def treinar(self, X: np.ndarray, y: np.ndarray) -> "GradienteDrescedente":
         A = _com_intercepto(X)
         y = _conferir(A, y)
         n, d = A.shape
@@ -195,7 +195,7 @@ def pesos_por_reamostragem(
 
 
 def distancia_ate_a_solucao_exata(
-    gd: RegressaoLinearGD, fechada: RegressaoLinearFechada
+    gd: GradienteDrescedente, fechada: RegressaoLinearFechada
 ) -> np.ndarray:
     """Norma da diferença entre os pesos do GD e a solução exata, por época.
 

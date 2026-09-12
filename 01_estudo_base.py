@@ -145,6 +145,58 @@ def contagem_categoricas(df: pd.DataFrame) -> None:
     fig.savefig(figura("03_categoricas.png"), dpi=150)
     plt.close(fig)
 
+def calcular_vif(df: pd.DataFrame) -> None:
+    # 1. Pegamos apenas as preditoras numéricas (excluímos o alvo 'price')
+    colunas_preditoras = D.NUMERICAS
+    X = df[colunas_preditoras].to_numpy(dtype=float)
+    
+    fatores_vif = np.empty(X.shape[1])
+    
+    # 2. Cálculo manual do VIF para cada coluna
+    for j in range(X.shape[1]):
+        # Separa a coluna atual (alvo temporário) e as "outras"
+        coluna_alvo = X[:, j]
+        outras_colunas = np.delete(X, j, axis=1)
+        
+        # Adiciona o intercepto (coluna de 1s) nas outras colunas
+        outras_com_intercepto = np.column_stack([np.ones(len(outras_colunas)), outras_colunas])
+        
+        # Regressão linear simples usando mínimos quadrados (lstsq)
+        beta, *_ = np.linalg.lstsq(outras_com_intercepto, coluna_alvo, rcond=None)
+        
+        # Calcula os resíduos e o R²
+        residuo = coluna_alvo - outras_com_intercepto @ beta
+        total = ((coluna_alvo - np.mean(coluna_alvo)) ** 2).sum()
+        r2 = 1 - (np.sum(residuo**2) / total)
+        
+        # VIF = 1 / (1 - R²)
+        fatores_vif[j] = np.inf if r2 >= 1.0 else 1 / (1 - r2)
+
+    # 3. Organizando os dados para o gráfico
+    tabela_vif = pd.Series(fatores_vif, index=colunas_preditoras).sort_values()
+
+    # 4. Plotagem
+    fig, eixo = plt.subplots(figsize=(7, 5))
+    
+    # Cores: Verde se VIF < 10 (ok), Vermelho se VIF >= 10 (problema de colinearidade)
+    cores = ["#2ca02c" if valor < 10 else "#d62728" for valor in tabela_vif]
+    
+    eixo.barh(tabela_vif.index, tabela_vif.values, color=cores)
+    eixo.axvline(10, color="black", linestyle="--", linewidth=1.5, label="Limiar Crítico (10)")
+    
+    eixo.set_title("Fator de Inflação da Variância (VIF)", fontweight="bold")
+    eixo.set_xlabel("Valor do VIF (Multicolinearidade)")
+    eixo.legend()
+    
+    fig.tight_layout()
+    fig.savefig(figura("06_vif.png"), dpi=150)
+    plt.close(fig)
+    
+    print("\nFATOR DE INFLAÇÃO DA VARIÂNCIA (VIF):")
+    for nome, valor in tabela_vif.items():
+        alerta = " [ALERTA: Alta Colinearidade]" if valor >= 10 else ""
+        print(f"  {nome:8}: {valor:8.2f}{alerta}")
+
 # Clusterização com T-SNE
 def tsne(df: pd.DataFrame, tamanho: int, semente: int) -> None:
     try:
@@ -220,6 +272,8 @@ def main() -> None:
     cor = matriz_correlacao(limpo)
     cor.to_csv(RESULTADOS / "correlacao.csv")
     contagem_categoricas(limpo)
+
+    calcular_vif(limpo)
 
     print("\nCORRELACAO COM O ALVO")
     for nome, valor in cor[D.ALVO].drop(D.ALVO).sort_values(key=abs, ascending=False).items():
