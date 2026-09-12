@@ -5,8 +5,8 @@ Responde aos itens "faça uma análise dos pesos de cada atributo" e "mostre a
 variação dos parâmetros com Gradient Descent [...] tem algum ponto que eles não
 se alteram mais?".
 
-Sem penalização L2, a estabilidade dos coeficientes é medida por VIF e por
-reamostragem bootstrap, em vez do caminho em função de λ.
+A estabilidade dos coeficientes é medida pelo fator de inflação da variância
+(VIF) e por reamostragem bootstrap.
 
 Produz em figuras/ e resultados/:
     06_pesos_e_vif.png          coeficiente e VIF de cada atributo
@@ -24,6 +24,10 @@ import argparse
 import sys
 from pathlib import Path
 
+# O console do Windows abre em cp1252 e quebra ao imprimir setas e simbolos.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 import matplotlib
 
 matplotlib.use("Agg")
@@ -38,6 +42,7 @@ from src.modelos import (  # noqa: E402
     RegressaoLinearFechada,
     RegressaoLinearGD,
     distancia_ate_a_solucao_exata,
+    espectro,
     pesos_por_reamostragem,
     vif,
 )
@@ -132,6 +137,9 @@ def convergencia(conjunto: dict, taxa: float, epocas: int) -> None:
 
 
 def varredura_taxa(conjunto: dict, taxas: list[float], epocas: int) -> None:
+    esp = espectro(conjunto["X_treino"])
+    print(f"  taxa maxima estavel = 2/lambda_max = {esp['taxa_maxima']:.4f}")
+    print(f"  numero de condicao da hessiana = {esp['kappa']:,.0f}")
     cores = [AZUL, VERDE, ROXO, LARANJA, "#6A7A74"]
     fig, eixo = plt.subplots(figsize=(7.5, 4.6))
     for cor, taxa in zip(cores, taxas):
@@ -154,8 +162,8 @@ def varredura_taxa(conjunto: dict, taxas: list[float], epocas: int) -> None:
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--taxa", type=float, default=0.1)
-    p.add_argument("--epocas", type=int, default=5000)
+    p.add_argument("--taxa", type=float, default=0.2)
+    p.add_argument("--epocas", type=int, default=50_000)
     p.add_argument("--reamostras", type=int, default=200)
     p.add_argument("--semente", type=int, default=42)
     args = p.parse_args()
@@ -180,17 +188,11 @@ def main() -> None:
     convergencia(conjunto, args.taxa, args.epocas)
 
     print("\nVARREDURA DE TAXA")
-    varredura_taxa(conjunto, [0.001, 0.01, 0.1, 0.5, 1.0], epocas=400)
+    varredura_taxa(conjunto, [0.001, 0.01, 0.1, 0.2, 0.3], epocas=400)
 
     print(f"\nfiguras em {FIGURAS}")
     print(f"tabela  em {RESULTADOS / 'pesos.csv'}")
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except NotImplementedError as erro:
-        print(f"\nFalta implementar: {erro}")
-        print("Os dois TODO estao em src/modelos.py — "
-              "RegressaoLinearFechada.treinar e RegressaoLinearGD.treinar.")
-        raise SystemExit(1)
+    main()

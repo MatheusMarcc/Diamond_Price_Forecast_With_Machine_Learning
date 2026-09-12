@@ -21,6 +21,10 @@ import argparse
 import sys
 from pathlib import Path
 
+# O console do Windows abre em cp1252 e quebra ao imprimir setas e simbolos.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 import matplotlib
 
 matplotlib.use("Agg")  # sem janela: salva direto em arquivo

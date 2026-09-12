@@ -128,11 +128,11 @@ def preparar(
 ) -> dict:
     """Executa o pipeline inteiro e devolve tudo que os scripts precisam.
 
-    Retorna um dicionário com X_treino, X_teste (já padronizados), y_treino,
-    y_teste, os nomes das colunas, o relatório de limpeza e o padronizador.
+    Retorna um dicionário com X_treino e X_teste já padronizados, y_treino,
+    y_teste, os nomes das colunas na ordem das matrizes, e se o alvo está em log.
     """
     bruto = carregar(caminho)
-    limpo, relatorio = limpar(bruto)
+    limpo, _ = limpar(bruto)
 
     if codificacao == "ordinal":
         tabela = codificar_ordinal(limpo)
@@ -155,9 +155,5 @@ def preparar(
         "y_treino": y[treino],
         "y_teste": y[teste],
         "colunas": list(X_df.columns),
-        "relatorio_limpeza": relatorio,
-        "padronizador": padronizador,
         "alvo_em_log": alvo_em_log,
-        "df_limpo": limpo,
-        "indices": (treino, teste),
     }

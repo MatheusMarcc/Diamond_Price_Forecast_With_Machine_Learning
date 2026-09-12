@@ -9,9 +9,14 @@ ou em log — cada uma treinada pelas equações normais e por Gradient Descent.
 Quando o alvo é log, as previsões voltam para dólares antes de medir; senão as
 métricas não são comparáveis entre as linhas da tabela.
 
+O Gradient Descent roda 50.000 épocas com taxa 0,2 por padrão. Não é exagero:
+a colinearidade entre carat, x, y e z deixa o vale do custo muito alongado, e
+com menos épocas o GD acerta as métricas mas ainda não chegou aos mesmos pesos
+da solução exata. A análise disso está em 03_analises.py.
+
 Uso:
     python 02_treino.py
-    python 02_treino.py --taxa 0.05 --epocas 5000
+    python 02_treino.py --taxa 0.1 --epocas 100000
 """
 from __future__ import annotations
 
@@ -20,6 +25,10 @@ import sys
 import time
 from pathlib import Path
 
+# O console do Windows abre em cp1252 e quebra ao imprimir setas e simbolos.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 import numpy as np
 import pandas as pd
 
@@ -27,7 +36,7 @@ RAIZ = Path(__file__).resolve().parent
 sys.path.insert(0, str(RAIZ))
 from src import dados as D  # noqa: E402
 from src import metricas as M  # noqa: E402
-from src.modelos import RegressaoLinearFechada, RegressaoLinearGD  # noqa: E402
+from src.modelos import RegressaoLinearFechada, RegressaoLinearGD, espectro  # noqa: E402
 
 RESULTADOS = RAIZ / "resultados"
 
@@ -43,8 +52,8 @@ def medir(modelo, conjunto: dict, particao: str) -> dict:
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--taxa", type=float, default=0.1, help="taxa de aprendizado do GD")
-    p.add_argument("--epocas", type=int, default=5000)
+    p.add_argument("--taxa", type=float, default=0.2, help="taxa de aprendizado do GD")
+    p.add_argument("--epocas", type=int, default=50_000)
     p.add_argument("--semente", type=int, default=42)
     args = p.parse_args()
 
@@ -104,10 +113,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except NotImplementedError as erro:
-        print(f"\nFalta implementar: {erro}")
-        print("Os dois TODO estao em src/modelos.py — "
-              "RegressaoLinearFechada.treinar e RegressaoLinearGD.treinar.")
-        raise SystemExit(1)
+    main()
