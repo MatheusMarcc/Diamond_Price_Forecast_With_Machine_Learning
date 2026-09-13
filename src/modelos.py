@@ -2,8 +2,8 @@
 
 O enunciado pede que estes dois algoritmos sejam implementados por você, com
 módulos de treino e de predição separados. Por isso o encanamento está pronto
-(intercepto, validações, histórico, comparação entre os dois) e o miolo de cada
-um está marcado com TODO — são as poucas linhas que valem a nota.
+(intercepto, validações, histórico, comparação entre os dois) e o núcleo de
+cada um está implementado aqui, sem usar scikit-learn.
 
 Notação usada em todo o arquivo:
     X  matriz n x d de atributos JÁ PADRONIZADOS (sem coluna de uns)
@@ -48,11 +48,9 @@ class RegressaoLinearFechada:
         A = _com_intercepto(X)
         y = _conferir(A, y)
 
-        # TODO: resolver (AᵀA) w = Aᵀy e guardar o resultado em self.w_
-        # Dica: np.linalg.solve(...) e mais estavel e mais rapido do que
-        # inverter AᵀA explicitamente com np.linalg.inv.
-        raise NotImplementedError("implemente as equacoes normais")
-
+        # Resolver o sistema é mais estável e mais rápido do que inverter AᵀA
+        # explicitamente com np.linalg.inv.
+        self.w_ = np.linalg.solve(A.T @ A, A.T @ y)
         return self
 
     def prever(self, X: np.ndarray) -> np.ndarray:
@@ -103,24 +101,31 @@ class RegressaoLinearGD:
         n, d = A.shape
         w = np.zeros(d)
 
+        # J é convexo e quadrático: com taxa estável, partindo de w = 0, o custo
+        # cai de forma monótona. Qualquer valor acima do custo inicial significa
+        # que a taxa passou de 2/λ_max e o método está divergindo.
+        custo_inicial = self.custo(A, y, w)
         self.historico_ = {"custo": [], "norma_gradiente": [], "pesos": []}
 
-        for epoca in range(self.epocas):
-            # TODO: calcular o gradiente conforme a formula do docstring
-            #       e atualizar w dando um passo de tamanho self.taxa
-            raise NotImplementedError("implemente o passo do Gradient Descent")
+        with np.errstate(over="ignore", invalid="ignore"):
+            for epoca in range(self.epocas):
+                gradiente = (2 / n) * (A.T @ (A @ w - y))
+                w = w - self.taxa * gradiente
+                custo = self.custo(A, y, w)
 
-            self.historico_["custo"].append(self.custo(A, y, w))
-            self.historico_["norma_gradiente"].append(float(np.linalg.norm(gradiente)))
-            self.historico_["pesos"].append(w.copy())
+                if not np.isfinite(custo) or not np.isfinite(w).all() or custo > custo_inicial:
+                    raise FloatingPointError(
+                        f"divergiu na epoca {epoca}: taxa={self.taxa} passou do limite "
+                        "estavel 2/lambda_max. Reduza a taxa ou confirme que X esta "
+                        "padronizado — veja modelos.espectro(X)."
+                    )
 
-            if not np.isfinite(w).all():
-                raise FloatingPointError(
-                    f"divergiu na epoca {epoca}: taxa={self.taxa} alta demais. "
-                    "Reduza a taxa ou confirme que X esta padronizado."
-                )
-            if np.linalg.norm(gradiente) < self.tolerancia:
-                break
+                self.historico_["custo"].append(custo)
+                self.historico_["norma_gradiente"].append(float(np.linalg.norm(gradiente)))
+                self.historico_["pesos"].append(w.copy())
+
+                if np.linalg.norm(gradiente) < self.tolerancia:
+                    break
 
         self.w_ = w
         self.epocas_executadas_ = epoca + 1
@@ -141,8 +146,30 @@ class RegressaoLinearGD:
 
 
 # --------------------------------------------------------------------------- #
-# Diagnóstico da colinearidade
+# Diagnóstico da colinearidade e da convergência
 # --------------------------------------------------------------------------- #
+def espectro(X: np.ndarray) -> dict:
+    """Autovalores da hessiana do custo e o que eles determinam.
+
+    Para J(w) = (1/n)‖Aw − y‖², a hessiana é H = (2/n)AᵀA, constante. Dela saem
+    dois números que governam o Gradient Descent:
+
+    * `taxa_maxima` = 2/λ_max — acima disso o método diverge, independente de
+      quantas épocas você rode.
+    * `kappa` = λ_max/λ_min — o número de condição. Quanto maior, mais alongado
+      é o vale do custo e mais épocas o GD precisa para percorrer a direção de
+      menor curvatura. É por isso que colinearidade atrasa a convergência.
+    """
+    A = _com_intercepto(X)
+    autovalores = np.linalg.eigvalsh((2 / len(A)) * (A.T @ A))
+    return {
+        "lambda_min": float(autovalores[0]),
+        "lambda_max": float(autovalores[-1]),
+        "kappa": float(autovalores[-1] / autovalores[0]),
+        "taxa_maxima": float(2 / autovalores[-1]),
+    }
+
+
 def vif(X: np.ndarray) -> np.ndarray:
     """Fator de inflação da variância de cada coluna.
 

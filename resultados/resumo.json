@@ -1,0 +1,265 @@
+{
+  "base": {
+    "fonte": "OpenML 42225 (ARFF)",
+    "linhas_originais": 53940,
+    "removidas": 23,
+    "linhas_finais": 53917,
+    "motivo_remocao": "x, y ou z igual a zero ou acima de 20 mm",
+    "faltantes": 0,
+    "preditoras": 9,
+    "alvo": "price (USD)"
+  },
+  "split": {
+    "treino": 43134,
+    "teste": 10783,
+    "fracao_teste": 0.2,
+    "semente": 42
+  },
+  "alvo": {
+    "min": 326.0,
+    "q25": 949.0,
+    "mediana": 2401.0,
+    "media": 3930.9104735055735,
+    "q75": 5323.0,
+    "max": 18823.0,
+    "assimetria": 1.6184186803002243,
+    "assimetria_log": 0.11546017047276894
+  },
+  "categoricas": {
+    "cut": {
+      "Fair": 1609,
+      "Good": 4902,
+      "Very Good": 12080,
+      "Premium": 13779,
+      "Ideal": 21547
+    },
+    "color": {
+      "J": 2808,
+      "I": 5421,
+      "H": 8297,
+      "G": 11284,
+      "F": 9538,
+      "E": 9795,
+      "D": 6774
+    },
+    "clarity": {
+      "I1": 738,
+      "SI2": 9184,
+      "SI1": 13063,
+      "VS2": 12254,
+      "VS1": 8168,
+      "VVS2": 5066,
+      "VVS1": 3654,
+      "IF": 1790
+    }
+  },
+  "correlacao_com_alvo": {
+    "carat": 0.922,
+    "y": 0.889,
+    "x": 0.887,
+    "z": 0.882,
+    "table": 0.127,
+    "depth": -0.011
+  },
+  "colinearidade": {
+    "carat_x": 0.9778,
+    "x_y": 0.9987,
+    "vif": {
+      "carat": 24.9,
+      "cut": 1.5,
+      "color": 1.1,
+      "clarity": 1.2,
+      "depth": 8.9,
+      "table": 1.6,
+      "x": 537.2,
+      "y": 539.5,
+      "z": 489.7
+    },
+    "x_z": 0.9911
+  },
+  "espectro": {
+    "lambda_min": 0.002404,
+    "lambda_max": 8.607072,
+    "kappa": 3579.9,
+    "taxa_maxima": 0.232367
+  },
+  "convergencia": {
+    "taxa": 0.2,
+    "epocas": 50000,
+    "custo_epoca_0": 14726240.928161524,
+    "custo_final": 1475327.4662157232,
+    "epoca_custo_dentro_de_1pct": 331,
+    "epoca_custo_dentro_de_0_01pct": 5034,
+    "epoca_pesos_estabilizam_1e-6": 45776,
+    "distancia_final": 1.0181386789126724e-07,
+    "taxa_estavel_max_empirica": "0,23 converge; 0,24 diverge"
+  },
+  "metricas": [
+    {
+      "codificacao": "ordinal",
+      "alvo": "USD",
+      "metodo": "equacoes normais",
+      "r2_treino": 0.9075,
+      "r2_teste": 0.91,
+      "mse_teste": 1408606.4313,
+      "rmse_teste": 1186.8473,
+      "segundos": 0.002,
+      "epocas": NaN
+    },
+    {
+      "codificacao": "ordinal",
+      "alvo": "USD",
+      "metodo": "gradient descent",
+      "r2_treino": 0.9075,
+      "r2_teste": 0.91,
+      "mse_teste": 1408606.4313,
+      "rmse_teste": 1186.8473,
+      "segundos": 29.4478,
+      "epocas": 50000.0
+    },
+    {
+      "codificacao": "ordinal",
+      "alvo": "log",
+      "metodo": "equacoes normais",
+      "r2_treino": 0.9496,
+      "r2_teste": 0.9524,
+      "mse_teste": 745543.7797,
+      "rmse_teste": 863.4488,
+      "segundos": 0.0025,
+      "epocas": NaN
+    },
+    {
+      "codificacao": "ordinal",
+      "alvo": "log",
+      "metodo": "gradient descent",
+      "r2_treino": 0.9496,
+      "r2_teste": 0.9524,
+      "mse_teste": 745543.7776,
+      "rmse_teste": 863.4488,
+      "segundos": 19.0359,
+      "epocas": 31191.0
+    },
+    {
+      "codificacao": "onehot",
+      "alvo": "USD",
+      "metodo": "equacoes normais",
+      "r2_treino": 0.9202,
+      "r2_teste": 0.9218,
+      "mse_teste": 1223692.4796,
+      "rmse_teste": 1106.2063,
+      "segundos": 0.0062,
+      "epocas": NaN
+    },
+    {
+      "codificacao": "onehot",
+      "alvo": "USD",
+      "metodo": "gradient descent",
+      "r2_treino": 0.9202,
+      "r2_teste": 0.9218,
+      "mse_teste": 1223692.4796,
+      "rmse_teste": 1106.2063,
+      "segundos": 37.7512,
+      "epocas": 50000.0
+    },
+    {
+      "codificacao": "onehot",
+      "alvo": "log",
+      "metodo": "equacoes normais",
+      "r2_treino": 0.9587,
+      "r2_teste": 0.9599,
+      "mse_teste": 628051.9753,
+      "rmse_teste": 792.4973,
+      "segundos": 0.0063,
+      "epocas": NaN
+    },
+    {
+      "codificacao": "onehot",
+      "alvo": "log",
+      "metodo": "gradient descent",
+      "r2_treino": 0.9587,
+      "r2_teste": 0.9599,
+      "mse_teste": 628051.9727,
+      "rmse_teste": 792.4973,
+      "segundos": 32.0383,
+      "epocas": 38845.0
+    }
+  ],
+  "pesos_ordinal_usd": {
+    "carat": {
+      "coeficiente": 5150.265,
+      "vif": 24.868,
+      "desvio_bootstrap": 112.007,
+      "coef_sobre_desvio": 45.981
+    },
+    "y": {
+      "coeficiente": 2922.116,
+      "vif": 539.527,
+      "desvio_bootstrap": 427.869,
+      "coef_sobre_desvio": 6.829
+    },
+    "x": {
+      "coeficiente": -2007.215,
+      "vif": 537.186,
+      "desvio_bootstrap": 396.697,
+      "coef_sobre_desvio": -5.06
+    },
+    "z": {
+      "coeficiente": -1934.831,
+      "vif": 489.704,
+      "desvio_bootstrap": 761.968,
+      "coef_sobre_desvio": -2.539
+    },
+    "clarity": {
+      "coeficiente": 816.242,
+      "vif": 1.238,
+      "desvio_bootstrap": 8.821,
+      "coef_sobre_desvio": 92.53
+    },
+    "color": {
+      "coeficiente": 548.88,
+      "vif": 1.122,
+      "desvio_bootstrap": 7.438,
+      "coef_sobre_desvio": 73.791
+    },
+    "cut": {
+      "coeficiente": 145.341,
+      "vif": 1.5,
+      "desvio_bootstrap": 7.435,
+      "coef_sobre_desvio": 19.549
+    },
+    "depth": {
+      "coeficiente": 125.623,
+      "vif": 8.866,
+      "desvio_bootstrap": 93.048,
+      "coef_sobre_desvio": 1.35
+    },
+    "table": {
+      "coeficiente": -39.934,
+      "vif": 1.631,
+      "desvio_bootstrap": 8.224,
+      "coef_sobre_desvio": -4.856
+    }
+  },
+  "gd_vs_forma_fechada": {
+    "ordinal/USD": {
+      "max_dif_coeficiente": 7.235257726279087e-08,
+      "norma_dif": 1.0181386789126724e-07,
+      "epocas": 50000
+    },
+    "ordinal/log": {
+      "max_dif_coeficiente": 3.159340833391866e-08,
+      "norma_dif": 4.107567855540531e-08,
+      "epocas": 31191
+    },
+    "onehot/USD": {
+      "max_dif_coeficiente": 4.1271700865763705e-06,
+      "norma_dif": 5.575526711828818e-06,
+      "epocas": 50000
+    },
+    "onehot/log": {
+      "max_dif_coeficiente": 3.6854217233539543e-08,
+      "norma_dif": 4.986815619273721e-08,
+      "epocas": 38845
+    }
+  }
+}
