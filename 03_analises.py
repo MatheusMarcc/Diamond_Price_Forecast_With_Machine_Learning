@@ -88,8 +88,12 @@ def estabilidade(conjunto: dict, repeticoes: int, semente: int) -> pd.Series:
     colunas = conjunto["colunas"]
 
     fig, eixo = plt.subplots(figsize=(9, 5))
-    eixo.boxplot([pesos[:, j] for j in range(pesos.shape[1])], labels=colunas,
+    # Os rotulos sao postos por set_xticks, e nao pelo argumento `labels` de
+    # boxplot: esse argumento virou `tick_labels` no matplotlib 3.9 e sai de vez
+    # no 3.11, e requirements.txt admite qualquer versao a partir de 3.8.
+    eixo.boxplot([pesos[:, j] for j in range(pesos.shape[1])],
                  showfliers=False, medianprops={"color": ROXO})
+    eixo.set_xticks(range(1, len(colunas) + 1), colunas)
     eixo.axhline(0, color="#3B4A46", linewidth=0.8, linestyle="--")
     eixo.tick_params(axis="x", rotation=45)
     eixo.set_ylabel("coeficiente padronizado")

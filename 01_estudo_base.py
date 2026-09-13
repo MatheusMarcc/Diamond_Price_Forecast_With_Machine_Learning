@@ -10,10 +10,15 @@ Produz, em figuras/ e resultados/:
     estatisticas.csv            descritivas por coluna
     correlacao.csv              matriz de correlação
     limpeza.csv                 o que foi removido e por quê
+    tsne_diagnostico.json       números que sustentam a leitura das figuras 04 e 05
+
+O t-SNE roda sobre a base inteira por padrão (53.917 pontos), o que leva dezenas
+de minutos na primeira execução. A projeção fica em cache em resultados/, então
+as execuções seguintes replotam de graça.
 
 Uso:
     python 01_estudo_base.py
-    python 01_estudo_base.py --amostra-tsne 3000
+    python 01_estudo_base.py --amostra-tsne 3000   # subamostra, para testes rápidos
 """
 from __future__ import annotations
 
@@ -119,6 +124,9 @@ def tsne(df: pd.DataFrame, tamanho: int, semente: int) -> None:
         print("    rode:  python -m pip install scikit-learn")
         return
 
+    if tamanho <= 0:  # 0 (o padrão) significa: use a base inteira
+        tamanho = len(df)
+
     rng = np.random.default_rng(semente)
     amostra = df.iloc[rng.choice(len(df), size=min(tamanho, len(df)), replace=False)]
 
@@ -126,11 +134,24 @@ def tsne(df: pd.DataFrame, tamanho: int, semente: int) -> None:
     X = D.Padronizador().ajustar_transformar(X)
     y = amostra[D.ALVO].to_numpy(float)
 
-    print(f"  rodando t-SNE em {len(X):,} pontos...")
-    Z = TSNE(n_components=2, perplexity=30, init="pca", random_state=semente).fit_transform(X)
+    # A projeção é cara (minutos, em dezenas de milhares de pontos) e não muda
+    # com a cor, então fica em cache para permitir replotar de graça.
+    cache = RESULTADOS / f"tsne_{len(X)}_{semente}.npy"
+    if cache.exists():
+        Z = np.load(cache)
+        print(f"  reaproveitando projeção de {cache.name}")
+    else:
+        print(f"  rodando t-SNE em {len(X):,} pontos...")
+        Z = TSNE(n_components=2, perplexity=30, init="pca", random_state=semente).fit_transform(X)
+        np.save(cache, Z)
+
+    # Só o tamanho do marcador acompanha a densidade. A opacidade fica numa
+    # faixa estreita: baixa demais apaga a estrutura, alta demais vira mancha.
+    s = max(0.8, 4 * (5_000 / len(X)) ** 0.5)
+    alfa = 0.45 if len(X) > 20_000 else 0.55
 
     fig, eixo = plt.subplots(figsize=(6.5, 6))
-    eixo.scatter(Z[:, 0], Z[:, 1], s=4, alpha=0.5, color="#3B4A46")
+    eixo.scatter(Z[:, 0], Z[:, 1], s=s, alpha=alfa, color="#3B4A46", linewidths=0)
     eixo.set_title(f"t-SNE sem rótulos (n={len(X):,})", fontweight="bold")
     eixo.set_xticks([]); eixo.set_yticks([])
     fig.tight_layout()
@@ -144,18 +165,75 @@ def tsne(df: pd.DataFrame, tamanho: int, semente: int) -> None:
     fig, eixo = plt.subplots(figsize=(6.5, 6))
     for cor, nivel in zip(cores, quartis.categories):
         m = quartis == nivel
-        eixo.scatter(Z[m, 0], Z[m, 1], s=4, alpha=0.6, color=cor, label=str(nivel))
-    eixo.legend(markerscale=4, frameon=False, loc="best")
-    eixo.set_title("t-SNE colorido por quartil de preço", fontweight="bold")
+        eixo.scatter(Z[m, 0], Z[m, 1], s=s, alpha=alfa, color=cor,
+                     label=str(nivel), linewidths=0)
+    eixo.legend(markerscale=max(4.0, 16 / s), frameon=False, loc="best",
+                scatterpoints=1, handletextpad=0.6)
+    eixo.set_title(f"t-SNE colorido por quartil de preço (n={len(X):,})", fontweight="bold")
     eixo.set_xticks([]); eixo.set_yticks([])
     fig.tight_layout()
     fig.savefig(figura("05_tsne_com_rotulo.png"), dpi=150)
     plt.close(fig)
 
+    diagnostico_tsne(Z, amostra, semente)
+
+
+def diagnostico_tsne(Z: np.ndarray, amostra: pd.DataFrame, semente: int) -> None:
+    """Mede o que as figuras 04 e 05 mostram, para não ficar só na leitura visual.
+
+    Duas perguntas:
+
+    * O eixo horizontal da projeção é mesmo o tamanho da pedra? Medido pela
+      correlação do primeiro eixo com `carat` e com log(preço). O sinal do eixo
+      é arbitrário no t-SNE, então só o módulo tem significado.
+    * Os fragmentos visíveis correspondem a quê? Agrupamos a projeção em 8
+      grupos por k-médias e medimos a informação mútua ajustada entre esses
+      grupos e cada atributo categórico. AMI perto de 0 significa que o atributo
+      não explica os fragmentos; perto de 1, que ele os determina.
+    """
+    import json
+
+    try:
+        from sklearn.cluster import KMeans
+        from sklearn.metrics import adjusted_mutual_info_score
+    except ImportError:
+        print("  ! scikit-learn incompleto — diagnostico do t-SNE pulado.")
+        return
+
+    eixo1 = Z[:, 0]
+    grupos = KMeans(n_clusters=8, n_init=10, random_state=semente).fit_predict(Z)
+    faixa_carat = pd.qcut(amostra["carat"], 4, labels=False, duplicates="drop")
+
+    saida = {
+        "n": int(len(Z)),
+        "semente": int(semente),
+        "grupos_kmeans": 8,
+        "correlacao_abs_eixo1": {
+            "carat": abs(float(np.corrcoef(eixo1, amostra["carat"])[0, 1])),
+            "log_price": abs(float(np.corrcoef(eixo1, np.log(amostra[D.ALVO]))[0, 1])),
+        },
+        "informacao_mutua_ajustada": {
+            "cut": float(adjusted_mutual_info_score(grupos, amostra["cut"])),
+            "faixa_de_carat": float(adjusted_mutual_info_score(grupos, faixa_carat)),
+            "clarity": float(adjusted_mutual_info_score(grupos, amostra["clarity"])),
+            "color": float(adjusted_mutual_info_score(grupos, amostra["color"])),
+        },
+    }
+
+    caminho = RESULTADOS / "tsne_diagnostico.json"
+    caminho.write_text(json.dumps(saida, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    print("\nDIAGNOSTICO DO t-SNE")
+    print(f"  |corr| do 1o eixo com carat       {saida['correlacao_abs_eixo1']['carat']:.3f}")
+    print(f"  |corr| do 1o eixo com log(preco)  {saida['correlacao_abs_eixo1']['log_price']:.3f}")
+    for nome, valor in saida["informacao_mutua_ajustada"].items():
+        print(f"  AMI dos 8 grupos com {nome:16} {valor:.3f}")
+
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--amostra-tsne", type=int, default=5000, help="pontos usados no t-SNE")
+    p.add_argument("--amostra-tsne", type=int, default=0,
+                   help="pontos usados no t-SNE (0 = base inteira, que e o padrao)")
     p.add_argument("--semente", type=int, default=42)
     args = p.parse_args()
 

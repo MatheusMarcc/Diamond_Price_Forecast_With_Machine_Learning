@@ -53,9 +53,9 @@ Figura: `02_correlacao.png`.
 
 ### Slide 5 — t-SNE: não existem grupos, existe um gradiente — 1,0 min
 
-- t-SNE em amostra de 5.000 pedras, perplexidade 30, inicialização por PCA, sobre os 9 atributos padronizados.
+- t-SNE sobre as **53.917 pedras** da base limpa (sem subamostragem), perplexidade 30, inicialização por PCA, sobre os 9 atributos padronizados.
 - Sem rótulo (figura 04): a nuvem mostra estrutura local, mas não se parte em classes disjuntas com fronteiras vazias.
-- Com rótulo (figura 05): não há classe para colorir em regressão, então o preço foi discretizado em quartis **apenas como cor** — Q1 barato a Q4 caro. Os quartis aparecem organizados como transição contínua da esquerda para a direita, não como ilhas separadas: o primeiro eixo da projeção correlaciona 0,874 com `carat` e 0,853 com $\log(price)$. Agrupando a projeção em 8 grupos, a informação mútua ajustada é de 0,435 com `cut` e 0,418 com a faixa de `carat`, contra 0,056 com `clarity` e 0,029 com `color` — os blocos visíveis são lapidação e tamanho, não pureza nem cor.
+- Com rótulo (figura 05): não há classe para colorir em regressão, então o preço foi discretizado em quartis **apenas como cor** — Q1 barato a Q4 caro. Os quartis aparecem organizados como transição contínua da esquerda para a direita, não como ilhas separadas: o primeiro eixo da projeção correlaciona, em módulo, **0,845** com `carat` e **0,781** com $\log(price)$. Agrupando a projeção em 8 grupos por k-médias, a informação mútua ajustada é de **0,428** com `cut` e **0,322** com a faixa de `carat`, contra **0,068** com `clarity` e **0,090** com `color` — os blocos visíveis são lapidação e tamanho, não pureza nem cor. (Números em `resultados/tsne_diagnostico.json`.)
 - Leitura para a modelagem: se o preço variasse em degraus por grupo, um modelo linear único seria inadequado e o caminho natural seria clusterizar e ajustar um modelo por cluster. Como a variação é contínua e monotônica, **um único modelo linear global é a escolha correta** — e o $R^2$ de 0,96 na Parte 3 confirma isso.
 
 Figuras: `04_tsne_sem_rotulo.png` e `05_tsne_com_rotulo.png`, lado a lado.
@@ -132,9 +132,9 @@ Figura: nenhuma — a tabela é o slide.
 
 ### Slide 11 — O custo de convergir por gradiente
 
-- Equações normais: entre **0,0020 e 0,0063 segundos** por ajuste.
-- Gradient Descent: entre **19,04 e 37,75 segundos**, com 31.191 a 50.000 épocas.
-- No caso ordinal em dólares: 0,0020 s contra 29,45 s — cerca de **15 mil vezes** mais lento, para o mesmo resultado.
+- Equações normais: entre **0,0036 e 0,0122 segundos** por ajuste.
+- Gradient Descent: entre **22,04 e 56,71 segundos**, com 31.191 a 50.000 épocas.
+- No caso ordinal em dólares: 0,0043 s contra 36,56 s — cerca de **8,5 mil vezes** mais lento, para o mesmo resultado.
 - As duas configurações em dólares bateram no teto de 50.000 épocas sem atingir a tolerância; as duas em log pararam antes (31.191 e 38.845 épocas).
 
 Figura: nenhuma — gráfico de barras dos tempos ou a coluna `segundos` da tabela.
@@ -176,7 +176,7 @@ Figura: `07_estabilidade.png` (boxplot das 200 reamostras) com o painel de VIF d
 
 Figuras: `08_convergencia.png` (custo por época e $\lVert w-w^{*}\rVert$ por época) e `09_taxa_aprendizado.png`.
 
-*O que falar:* fechar o arco da apresentação: $\kappa=3.580$ é a mesma colinearidade do slide 13 aparecendo em outro lugar — os atributos redundantes achatam uma direção da hessiana, $\lambda_{\min}=0{,}0024$, e é isso que faz o GD precisar de 45 mil épocas onde a forma fechada leva 2 milissegundos. Um único diagnóstico explica pesos instáveis **e** convergência lenta.
+*O que falar:* fechar o arco da apresentação: $\kappa=3.580$ é a mesma colinearidade do slide 13 aparecendo em outro lugar — os atributos redundantes achatam uma direção da hessiana, $\lambda_{\min}=0{,}0024$, e é isso que faz o GD precisar de 45 mil épocas onde a forma fechada leva 4 milissegundos. Um único diagnóstico explica pesos instáveis **e** convergência lenta.
 
 ---
 
@@ -184,7 +184,7 @@ Figuras: `08_convergencia.png` (custo por época e $\lVert w-w^{*}\rVert$ por é
 
 ### Slide 15 — Três conclusões
 
-1. **As duas implementações encontram o mesmo ótimo; o que difere é o preço pago.** $R^2$ igual em todas as quatro configurações, com diferença máxima de $1{,}7\times10^{-10}$ entre os dois métodos, e $\lVert w-w^{*}\rVert=1{,}02\times10^{-7}$ ao final — mas 0,0020 s contra 29,45 s. Custo convexo com 9 atributos: forma fechada.
+1. **As duas implementações encontram o mesmo ótimo; o que difere é o preço pago.** $R^2$ igual em todas as quatro configurações, com diferença máxima de $1{,}7\times10^{-10}$ entre os dois métodos, e $\lVert w-w^{*}\rVert=1{,}02\times10^{-7}$ ao final — mas 0,0043 s contra 36,56 s. Custo convexo com 9 atributos: forma fechada.
 2. **O ganho de desempenho veio do pré-processamento, não do otimizador.** Corrigir a assimetria do alvo (1,618 → 0,115 com log) e trocar ordinal por one-hot levou o $R^2$ de teste de 0,9100 para 0,9599 e cortou o MSE em 55,4% — RMSE de 792,50 dólares.
 3. **Predizer bem não é explicar bem.** Com VIF de 537, 540 e 490 em `x`, `y` e `z`, dois desses pesos saem negativos e o desvio bootstrap de `z` chega a 762. Só `clarity`, `color`, `carat` e `cut` têm coeficiente de 19 a 93 vezes o próprio desvio; e a mesma colinearidade que quebra a interpretação é a que faz o Gradient Descent precisar de 45.776 épocas para estabilizar os pesos, contra 331 para estabilizar o custo.
 
