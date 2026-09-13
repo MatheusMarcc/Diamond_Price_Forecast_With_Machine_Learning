@@ -1,0 +1,15 @@
+{
+  "n": 53917,
+  "semente": 42,
+  "grupos_kmeans": 8,
+  "correlacao_abs_eixo1": {
+    "carat": 0.8448747684976526,
+    "log_price": 0.7810481848173337
+  },
+  "informacao_mutua_ajustada": {
+    "cut": 0.42777757587941256,
+    "faixa_de_carat": 0.3222784267118033,
+    "clarity": 0.06753180186905546,
+    "color": 0.08958346921469777
+  }
+}

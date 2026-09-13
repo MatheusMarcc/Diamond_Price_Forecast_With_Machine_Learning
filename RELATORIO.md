@@ -45,7 +45,7 @@ O alvo é `price`, o preço de venda em dólares americanos. A tarefa é, portan
 | `y` | numérico | 3,68 a 10,54 | Largura em milímetros. |
 | `z` | numérico | 1,07 a 6,98 | Altura em milímetros. |
 
-Há uma redundância estrutural evidente já na leitura da tabela: `carat` é massa, e massa de um sólido é aproximadamente proporcional a $x \cdot y \cdot z$. Os quatro atributos medem a mesma coisa — o tamanho da pedra — por caminhos diferentes. Isso vira o problema central da análise dos pesos (seção 4) e não é corrigido no pré-processamento, porque o enunciado pede justamente que os modelos sejam avaliados como estão.
+Há uma redundância estrutural evidente já na leitura da tabela: `carat` é massa, e massa de um sólido é aproximadamente proporcional a $x \cdot y \cdot z$. Os quatro atributos medem a mesma coisa — o tamanho da pedra — por caminhos diferentes. Isso vira o problema central da análise dos pesos (seção 5.1) e não é corrigido no pré-processamento, porque o enunciado pede justamente que os modelos sejam avaliados como estão.
 
 ### 2.2 Limpeza
 
@@ -72,7 +72,7 @@ $$\text{clarity: I1} < \text{SI2} < \text{SI1} < \text{VS2} < \text{VS1} < \text
 
 A função `codificar_ordinal()` resolve isso construindo um `pd.Categorical` com `categories` fixado na ordem de qualidade e tomando os códigos resultantes, de modo que 0 é sempre o pior nível. Há uma verificação explícita: se algum valor da coluna não estiver na lista declarada, o código levanta `ValueError` com os valores desconhecidos, em vez de deixar passar um código $-1$ silencioso.
 
-Foram testadas **duas codificações**, e a comparação entre elas é um dos resultados da seção 4:
+Foram testadas **duas codificações**, e a comparação entre elas é um dos resultados da seção 4.2:
 
 1. **Ordinal** — um inteiro por atributo, na ordem de qualidade. Total de **9 preditoras**. Impõe ao modelo a hipótese de que os degraus entre níveis consecutivos são iguais: passar de SI2 para SI1 vale o mesmo que passar de VVS1 para IF.
 2. **One-hot** — uma coluna binária por nível, com `descartar_primeira=True` em `codificar_onehot()`, repassado ao `drop_first` de `pd.get_dummies`. Total de **23 preditoras**. O nível de pior qualidade de cada atributo (Fair, J, I1) vira a categoria de referência e é absorvido pelo intercepto; sem esse descarte, as colunas de um mesmo atributo somariam exatamente 1 em toda linha e seriam exatamente colineares com o intercepto, tornando $A^\top A$ singular. Essa codificação não assume degraus iguais — paga com 14 parâmetros a mais a liberdade de estimar o valor de cada nível separadamente.
@@ -87,7 +87,7 @@ $$z_{ij} = \frac{x_{ij} - \mu_j}{\sigma_j}$$
 
 O ponto metodológico é **de onde vêm $\mu_j$ e $\sigma_j$**: o método `ajustar()` é chamado apenas com `X[treino]`, e o mesmo par ($\mu$, $\sigma$) é depois aplicado ao teste por `transformar()`. Calcular média e desvio sobre a base completa seria vazamento de informação (*data leakage*): as estatísticas do conjunto de teste entrariam na transformação aplicada ao treino, o modelo treinaria sobre dados que já carregam informação de pontos que ele deveria nunca ter visto, e a métrica de teste deixaria de estimar o erro em dados novos — ela ficaria otimista. Em produção o mesmo raciocínio vale de forma mais óbvia: na hora de prever o preço de uma pedra nova não existe "a média do conjunto", só a média congelada no treino. Colunas de desvio zero recebem divisor 1,0 em vez de gerar divisão por zero — situação que ocorre em princípio nas colunas binárias do one-hot, embora nenhum nível da base seja constante.
 
-A padronização não é exigida pelas equações normais, que são invariantes a reescalonamento afim das colunas. Ela é necessária para o Gradient Descent: com `carat` em torno de 0,80 e `depth` em torno de 61,75, a matriz $A^\top A$ fica com autovalores separados por várias ordens de grandeza e nenhuma taxa de aprendizado única serve para todas as direções. Como efeito colateral útil, com as colunas na mesma escala os coeficientes passam a ser diretamente comparáveis entre si — o que é o que permite a análise de pesos da seção 4.
+A padronização não é exigida pelas equações normais, que são invariantes a reescalonamento afim das colunas. Ela é necessária para o Gradient Descent: com `carat` em torno de 0,80 e `depth` em torno de 61,75, a matriz $A^\top A$ fica com autovalores separados por várias ordens de grandeza e nenhuma taxa de aprendizado única serve para todas as direções. Como efeito colateral útil, com as colunas na mesma escala os coeficientes passam a ser diretamente comparáveis entre si — o que é o que permite a análise de pesos da seção 5.1.
 
 O alvo tem um tratamento próprio. A distribuição de `price` é assimétrica à direita, com assimetria 1,618, média 3.930,91 USD contra mediana 2.401,00 USD. O parâmetro `alvo_em_log` de `preparar()` permite treinar sobre $\log(\text{price})$, cuja assimetria cai para 0,115. Combinando as duas codificações com as duas escalas de alvo, temos as **quatro configurações** de dados avaliadas, cada uma treinada pelos dois algoritmos — oito ajustes no total.
 
@@ -218,13 +218,15 @@ O efeito prático é sobre a **confiança dos coeficientes dos níveis raros**, 
 
 ### 3.4 Análise visual de clusterização com t-SNE
 
-**Escolha metodológica.** O t-SNE é habitualmente apresentado com os pontos coloridos pela classe verdadeira, mas **em regressão não existe classe**: o alvo é contínuo. Para produzir a figura com rótulos, o preço foi discretizado em quatro quartis (Q1 barato, Q2, Q3, Q4 caro) usados **exclusivamente como cor**. Os quartis não entram no cálculo da projeção, não entram na matriz de atributos e não são usados por nenhum dos modelos — são apenas um instrumento de leitura da figura. A projeção foi calculada sobre uma amostra aleatória de 5.000 das 53.917 pedras (semente 42), com os 9 preditores em codificação ordinal e padronizados, com o preço removido da matriz, perplexidade 30 e inicialização por PCA.
+**Escolha metodológica.** O t-SNE é habitualmente apresentado com os pontos coloridos pela classe verdadeira, mas **em regressão não existe classe**: o alvo é contínuo. Para produzir a figura com rótulos, o preço foi discretizado em quatro quartis (Q1 barato, Q2, Q3, Q4 caro) usados **exclusivamente como cor**. Os quartis não entram no cálculo da projeção, não entram na matriz de atributos e não são usados por nenhum dos modelos — são apenas um instrumento de leitura da figura. A projeção foi calculada sobre **as 53.917 pedras da base limpa**, sem subamostragem, com os 9 preditores em codificação ordinal e padronizados, com o preço removido da matriz, perplexidade 30, inicialização por PCA e semente 42. A projeção fica em cache em `resultados/tsne_53917_42.npy`, o que permite replotar sem recalcular.
 
 **As duas figuras.** Em `04_tsne_sem_rotulo.png`, sem cor, o que se vê é uma nuvem fragmentada em muitos aglomerados pequenos e alongados, separados por corredores de baixa densidade. Essa fragmentação é típica do t-SNE aplicado a dados que misturam atributos contínuos com atributos discretos de poucos níveis: as combinações de `cut`, `color` e `clarity` criam sub-blocos, e o algoritmo, que preserva vizinhança local e não distância global, os desenha como ilhas. Olhando só essa figura, seria tentador concluir que a base tem estrutura de grupos bem definidos.
 
 Em `05_tsne_com_rotulo.png` a cor desfaz essa impressão. O preço não está distribuído aleatoriamente entre os fragmentos, mas também não respeita as fronteiras entre eles: há uma **progressão contínua da esquerda para a direita**. Q1 ocupa a região esquerda e superior esquerda; Q2 e Q3 ocupam a faixa central, misturados entre si; Q4 ocupa a região direita e inferior direita. As transições são graduais — nos fragmentos centrais convivem pontos de Q2 e Q3, e na faixa entre o centro e a direita convivem Q3 e Q4. Não existe nenhum aglomerado que seja puro em um quartil e esteja separado dos demais.
 
 **O que a clusterização revela.** O eixo dominante da estrutura é o **tamanho da pedra**. Os atributos que mais variam na base são `carat`, `x`, `y` e `z`, que são quase perfeitamente correlacionados entre si (seção 3.2) e formam uma única direção de variabilidade; é ela que organiza a projeção da esquerda (pedras pequenas) para a direita (pedras grandes). Como `carat` também é o atributo mais correlacionado com o alvo (0,922), o gradiente de preço acompanha essa mesma direção. Os fragmentos internos correspondem a combinações de qualidade (`cut`, `color`, `clarity`), que deslocam o preço dentro de cada faixa de tamanho sem reorganizá-la.
+
+**Medindo o que a figura mostra.** Para não deixar essa leitura apenas visual, a função `diagnostico_tsne()` de `01_estudo_base.py` mede as duas afirmações e grava o resultado em `resultados/tsne_diagnostico.json`. O primeiro eixo da projeção tem correlação em módulo de **0,845 com `carat`** e **0,781 com $\log(\text{price})$** — o sinal é irrelevante porque a orientação dos eixos do t-SNE é arbitrária —, o que confirma que a direção horizontal é a direção de tamanho e que o preço a acompanha. Para identificar os fragmentos, a projeção foi agrupada em 8 grupos por k-médias e mediu-se a informação mútua ajustada entre esses grupos e cada atributo categórico: **0,428 com `cut`** e **0,322 com a faixa de `carat`**, contra **0,068 com `clarity`** e **0,090 com `color`**. Ou seja, as ilhas visíveis são lapidação e tamanho; pureza e cor estão praticamente distribuídas por igual entre elas, e é por isso que nenhum fragmento é puro em um quartil de preço.
 
 **Como isso influencia o uso dos modelos.** Três consequências diretas:
 
@@ -244,14 +246,14 @@ Foram treinadas quatro configurações — duas codificações das variáveis ca
 
 | Codificação | Alvo | Algoritmo | R² treino | R² teste | MSE teste (USD²) | RMSE teste (USD) | Tempo (s) | Épocas |
 |---|---|---|---|---|---|---|---|---|
-| ordinal | USD | equações normais | 0,9075 | 0,9100 | 1.408.606,43 | 1.186,85 | 0,0020 | — |
-| ordinal | USD | gradient descent | 0,9075 | 0,9100 | 1.408.606,43 | 1.186,85 | 29,45 | 50.000 |
-| ordinal | log | equações normais | 0,9496 | 0,9524 | 745.543,78 | 863,45 | 0,0025 | — |
-| ordinal | log | gradient descent | 0,9496 | 0,9524 | 745.543,78 | 863,45 | 19,04 | 31.191 |
-| one-hot | USD | equações normais | 0,9202 | 0,9218 | 1.223.692,48 | 1.106,21 | 0,0062 | — |
-| one-hot | USD | gradient descent | 0,9202 | 0,9218 | 1.223.692,48 | 1.106,21 | 37,75 | 50.000 |
-| one-hot | log | equações normais | 0,9587 | 0,9599 | 628.051,98 | 792,50 | 0,0063 | — |
-| one-hot | log | gradient descent | 0,9587 | 0,9599 | 628.051,97 | 792,50 | 32,04 | 38.845 |
+| ordinal | USD | equações normais | 0,9075 | 0,9100 | 1.408.606,43 | 1.186,85 | 0,0043 | — |
+| ordinal | USD | gradient descent | 0,9075 | 0,9100 | 1.408.606,43 | 1.186,85 | 36,56 | 50.000 |
+| ordinal | log | equações normais | 0,9496 | 0,9524 | 745.543,78 | 863,45 | 0,0036 | — |
+| ordinal | log | gradient descent | 0,9496 | 0,9524 | 745.543,78 | 863,45 | 22,04 | 31.191 |
+| one-hot | USD | equações normais | 0,9202 | 0,9218 | 1.223.692,48 | 1.106,21 | 0,0057 | — |
+| one-hot | USD | gradient descent | 0,9202 | 0,9218 | 1.223.692,48 | 1.106,21 | 56,71 | 50.000 |
+| one-hot | log | equações normais | 0,9587 | 0,9599 | 628.051,98 | 792,50 | 0,0122 | — |
+| one-hot | log | gradient descent | 0,9587 | 0,9599 | 628.051,97 | 792,50 | 28,32 | 38.845 |
 
 A melhor configuração é **one-hot com alvo em log**, com $R^2$ de teste igual a 0,9599 e RMSE de 792,50 USD. Esse erro equivale a 20,2% do preço médio da base (3.930,91 USD). A pior é ordinal com alvo em dólares: $R^2$ de teste 0,9100 e RMSE de 1.186,85 USD, ou 30,2% do preço médio.
 
@@ -288,7 +290,7 @@ A maior discrepância relativa em toda a bateria é de $4{,}1 \times 10^{-9}$ no
 
 As métricas acompanham essa igualdade. Em ordinal/USD, o $R^2$ de teste é 0,910030722853241 pelas equações normais e 0,9100307228532633 pelo Gradient Descent — coincidem até a décima terceira casa decimal; o MSE difere em $3{,}5 \times 10^{-7}$ USD², ou $2{,}5 \times 10^{-13}$ em termos relativos. Na configuração vencedora, one-hot/log, o MSE é 628.051,9753 contra 628.051,9727 USD², diferença de 0,0026 USD², equivalente a $4{,}1 \times 10^{-9}$ do valor. É por isso que as oito linhas da tabela da Seção 4.1 aparecem aos pares, com $R^2$ idêntico até a quarta casa decimal: o par não é redundância de escrita, é a evidência de que a implementação iterativa reproduz a solução fechada.
 
-**O custo computacional, porém, difere por três a quatro ordens de grandeza.** As equações normais resolvem $A^\top A\,w = A^\top y$ em 0,0020 s (ordinal) a 0,0063 s (one-hot); o Gradient Descent gasta de 19,04 s a 37,75 s para chegar ao mesmo vetor. A razão vai de 5.085 vezes (one-hot/log) a 14.724 vezes (ordinal/USD). O custo por época fica em torno de 0,59 ms com 9 preditoras (29,45 s / 50.000 épocas) e 0,76 ms com 23 preditoras (37,75 s / 50.000 épocas): o GD escala bem em largura, mas o número de épocas necessárias é que o inviabiliza aqui. Vale notar que duas configurações — ordinal/USD e one-hot/USD — bateram o teto de 50.000 épocas sem atingir o critério de parada $\lVert \nabla J \rVert < 10^{-10}$, enquanto as duas com alvo em log pararam antes, em 31.191 e 38.845 épocas, porque o gradiente na escala logarítmica tem magnitude menor. A explicação estrutural está no número de condição da hessiana, $\kappa = 3.579{,}9$, analisado na Seção 6.
+**O custo computacional, porém, difere por três a quatro ordens de grandeza.** As equações normais resolvem $A^\top A\,w = A^\top y$ em 0,0036 s a 0,0122 s; o Gradient Descent gasta de 22,04 s a 56,71 s para chegar ao mesmo vetor. A razão vai de 2.326 vezes (one-hot/log) a 10.002 vezes (one-hot/USD). O custo por época fica em torno de 0,73 ms com 9 preditoras (36,56 s / 50.000 épocas) e 1,13 ms com 23 preditoras (56,71 s / 50.000 épocas): o GD escala bem em largura, mas o número de épocas necessárias é que o inviabiliza aqui. Vale notar que duas configurações — ordinal/USD e one-hot/USD — bateram o teto de 50.000 épocas sem atingir o critério de parada $\lVert \nabla J \rVert < 10^{-10}$, enquanto as duas com alvo em log pararam antes, em 31.191 e 38.845 épocas, porque o gradiente na escala logarítmica tem magnitude menor. A explicação estrutural está no número de condição da hessiana, $\kappa = 3.579{,}9$, analisado na Seção 5.2.
 
 Com $n = 43.134$ e no máximo 24 colunas (incluindo o intercepto), $A^\top A$ é uma matriz $24 \times 24$ e a solução fechada é claramente o método de escolha nesta base. O Gradient Descent se justifica aqui como implementação didática e como o algoritmo que continuaria viável caso o número de atributos crescesse a ponto de resolver $A^\top A\,w = A^\top y$ ficar caro — situação que esta base não alcança.
 
@@ -439,9 +441,9 @@ O que amarra os três parâmetros — taxa, épocas e tolerância — é o taman
 
 ![Contagem por nível de cut, color e clarity, na ordem de qualidade.](figuras/03_categoricas.png)
 
-**Figura 4** — Projeção t-SNE de 5.000 pedras, sem rótulos.
+**Figura 4** — Projeção t-SNE das 53.917 pedras, sem rótulos.
 
-![Projeção t-SNE de 5.000 pedras, sem rótulos.](figuras/04_tsne_sem_rotulo.png)
+![Projeção t-SNE das 53.917 pedras, sem rótulos.](figuras/04_tsne_sem_rotulo.png)
 
 **Figura 5** — A mesma projeção, colorida por quartil de preço.
 

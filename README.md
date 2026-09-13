@@ -14,7 +14,8 @@ Fonte: OpenML dataset 42225, baixado em ARFF e convertido para CSV por
 ```
 python -m pip install -r requirements.txt
 python arff_para_csv.py     # só na primeira vez: baixa e converte a base
-python 01_estudo_base.py    # figuras 01 a 05
+python 01_estudo_base.py    # figuras 01 a 05  (o t-SNE roda na base inteira:
+                            #  dezenas de minutos na 1ª vez, depois usa o cache)
 python 02_treino.py         # tabela de métricas  (~2,5 min)
 python 03_analises.py       # figuras 06 a 09     (~1,5 min)
 ```
@@ -25,7 +26,7 @@ python 03_analises.py       # figuras 06 a 09     (~1,5 min)
 dados/       ARFF original, CSV convertido e metadados de proveniência
 src/         módulos: dados, modelos, metricas
 figuras/     as 9 figuras do relatório
-resultados/  tabelas em csv e resumo.json com todos os números
+resultados/  tabelas em csv, resumo.json com todos os números e o cache do t-SNE
 ```
 
 | arquivo | o que faz |
@@ -34,7 +35,7 @@ resultados/  tabelas em csv e resumo.json com todos os números
 | `src/dados.py` | carga, limpeza, codificação, divisão treino/teste, padronização |
 | `src/modelos.py` | os dois algoritmos, mais VIF, bootstrap e espectro da hessiana |
 | `src/metricas.py` | MSE, RMSE e R² |
-| `01_estudo_base.py` | correlação, desbalanceamento e t-SNE |
+| `01_estudo_base.py` | correlação, desbalanceamento e t-SNE (com diagnóstico numérico da projeção) |
 | `02_treino.py` | 4 configurações × 2 algoritmos, com R² e MSE |
 | `03_analises.py` | pesos, VIF, estabilidade e convergência do GD |
 
