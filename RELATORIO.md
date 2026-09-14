@@ -384,10 +384,10 @@ O experimento de convergência usa a mesma configuração de 5.1 (ordinal, alvo 
 
 | época | o que aconteceu |
 |---|---|
-| **331** | As **previsões** pararam de melhorar. Daqui em diante o modelo prevê preços praticamente iguais. Mas os pesos ainda estão muito errados: o de `y` vale 151, quando o valor correto é 2.922. |
-| **5.034** | As previsões pararam **de vez** — mesmo olhando com lupa, a 0,01% em vez de 1%, o custo não se mexe mais. Os pesos, porém, continuam se ajustando: `y` já subiu para 2.642. |
-| **45.776** | Os **pesos** finalmente chegaram. A diferença para os valores exatos caiu abaixo de 0,000001 — irrelevante diante de coeficientes na casa dos milhares. |
-| **50.000** | Fim do orçamento de épocas. Diferença final: 0,0000001. |
+| **331** | As **previsões** pararam de melhorar. Daqui em diante o modelo prevê preços praticamente iguais|
+| **5.034** | O custo não mexe mias|
+| **45.776** | Os **pesos** convergiram, estão finalmente estão abaixo do limite estipulado|
+| **50.000** | Fim das épocas|
 
 > Entre a época 331 e o fim, a previsão de uma pedra do teste saiu de US$ 5.109,60 para US$ 5.203,73 — uma mudança de **1,8%**. No mesmo intervalo, o peso de `y` saiu de 150,67 para 2.922,12 — uma mudança de **19 vezes**. O custo não enxerga essa reorganização porque os erros dos pesos se cancelam entre si na previsão: `x` e `y` são quase a mesma coluna, então errar para mais num e para menos no outro devolve a mesma resposta.
 
