@@ -53,25 +53,40 @@ AZUL, VERDE, ROXO, LARANJA = "#2F6690", "#1F918B", "#3E2E62", "#B4553B"
 
 
 def pesos_e_vif(conjunto: dict) -> pd.DataFrame:
+    """Coeficiente e VIF de cada atributo, lado a lado.
+
+    O painel da direita traz o R² de cada atributo ao lado da barra, porque
+    "VIF = 539" nao diz nada sozinho: o que ele significa e que 99,8% daquela
+    coluna ja e explicada pelas outras.
+    """
     modelo = RegressaoLinearFechada().treinar(conjunto["X_treino"], conjunto["y_treino"])
     fatores = vif(conjunto["X_treino"])
     tabela = pd.DataFrame(
         {"coeficiente": modelo.coef_, "vif": fatores}, index=conjunto["colunas"]
     ).sort_values("coeficiente", key=abs, ascending=False)
 
-    fig, eixos = plt.subplots(1, 2, figsize=(12, 4.6))
-    cores = [LARANJA if c < 0 else AZUL for c in tabela.coeficiente]
-    eixos[0].barh(tabela.index[::-1], tabela.coeficiente[::-1], color=cores[::-1])
-    eixos[0].axvline(0, color="#3B4A46", linewidth=0.8)
-    eixos[0].set_title("Coeficientes padronizados\n(laranja = sinal negativo)")
-    eixos[0].set_xlabel("peso")
+    fig, eixos = plt.subplots(1, 2, figsize=(12.5, 4.8))
+    ordem = tabela.index[::-1]
 
-    eixos[1].barh(tabela.index[::-1], tabela.vif[::-1], color=VERDE)
-    eixos[1].axvline(10, color=LARANJA, linestyle="--", linewidth=1, label="limiar 10")
+    # --- esquerda: coeficientes padronizados ------------------------------- #
+    cores = [LARANJA if c < 0 else AZUL for c in tabela.coeficiente[::-1]]
+    eixos[0].barh(ordem, tabela.coeficiente[::-1], color=cores)
+    eixos[0].axvline(0, color="#3B4A46", linewidth=0.8)
+    eixos[0].set_title("Coeficientes padronizados\n(laranja = sinal negativo)", fontsize=10)
+    eixos[0].set_xlabel("dólares por desvio padrão do atributo")
+
+    # --- direita: VIF em escala log, com o R2 de cada atributo -------------- #
+    eixos[1].barh(ordem, tabela.vif[::-1], color=VERDE)
+    eixos[1].axvline(10, color=LARANJA, linestyle="--", linewidth=1.2, label="limiar 10")
     eixos[1].set_xscale("log")
-    eixos[1].set_title("Fator de inflação da variância (VIF)")
+    eixos[1].set_xlim(1, 3000)
+    for i, v in enumerate(tabela.vif[::-1]):
+        eixos[1].text(v * 1.25, i, f"R²={1 - 1 / v:.3f}".replace(".", ","),
+                      va="center", fontsize=8, color="#3B4A46")
+    eixos[1].set_title("Fator de inflação da variância\n"
+                       "(quanto do atributo as outras colunas já explicam)", fontsize=10)
     eixos[1].set_xlabel("VIF (escala log)")
-    eixos[1].legend(frameon=False)
+    eixos[1].legend(frameon=False, loc="lower right")
 
     fig.suptitle("Pesos e colinearidade", fontweight="bold")
     fig.tight_layout()
@@ -113,16 +128,42 @@ def convergencia(conjunto: dict, taxa: float, epocas: int) -> None:
     )
     distancia = distancia_ate_a_solucao_exata(gd, fechada)
 
-    fig, eixos = plt.subplots(1, 2, figsize=(11, 4.2))
-    eixos[0].plot(gd.historico_["custo"], color=AZUL)
-    eixos[0].set_yscale("log")
-    eixos[0].set_xlabel("época"); eixos[0].set_ylabel("J(w)")
-    eixos[0].set_title("Custo por época")
+    custo = np.array(gd.historico_["custo"])
+    marco = int(np.argmax(custo <= custo[-1] * 1.01))  # custo entra em 1% do final
 
+    fig, eixos = plt.subplots(1, 2, figsize=(12, 4.4))
+
+    # --- esquerda: o custo, que satura quase imediatamente ------------------ #
+    eixos[0].plot(custo, color=AZUL)
+    eixos[0].set_yscale("log")
+    eixos[0].axvline(marco, color=LARANJA, linestyle="--", linewidth=1.2)
+    eixos[0].annotate(f"época {marco:,}\ncusto a 1% do final".replace(",", "."),
+                      xy=(marco, custo[marco]), xytext=(0.16, 0.70),
+                      textcoords="axes fraction", fontsize=8.5, color=LARANJA,
+                      arrowprops={"arrowstyle": "->", "color": LARANJA, "lw": 1})
+    eixos[0].set_xlabel("época"); eixos[0].set_ylabel("J(w)")
+    eixos[0].set_title("Custo por época — satura cedo", fontsize=10)
+
+    # detalhe das primeiras mil epocas, onde tudo acontece
+    lupa = eixos[0].inset_axes([0.46, 0.16, 0.50, 0.34])
+    lupa.plot(custo[:1000], color=AZUL, linewidth=1)
+    lupa.set_yscale("log")
+    lupa.axvline(marco, color=LARANJA, linestyle="--", linewidth=1)
+    lupa.tick_params(labelsize=6.5)
+    lupa.set_title("primeiras 1.000 épocas", fontsize=7)
+
+    # --- direita: os pesos, que continuam se movendo ------------------------ #
     eixos[1].plot(distancia, color=VERDE)
     eixos[1].set_yscale("log")
+    eixos[1].axvline(marco, color=LARANJA, linestyle="--", linewidth=1.2)
+    eixos[1].annotate(f"na mesma época {marco:,}\nos pesos ainda estão\na {distancia[marco]:,.0f} da solução"
+                      .replace(",", "."),
+                      xy=(marco, distancia[marco]), xytext=(0.30, 0.78),
+                      textcoords="axes fraction", fontsize=8.5, color=LARANJA,
+                      arrowprops={"arrowstyle": "->", "color": LARANJA, "lw": 1})
     eixos[1].set_xlabel("época"); eixos[1].set_ylabel("‖w − w*‖")
-    eixos[1].set_title("Distância até a solução exata")
+    eixos[1].set_title("Distância até a solução exata — reta = decaimento geométrico",
+                       fontsize=10)
 
     fig.suptitle(f"Convergência do Gradient Descent (taxa={taxa:g})", fontweight="bold")
     fig.tight_layout()
