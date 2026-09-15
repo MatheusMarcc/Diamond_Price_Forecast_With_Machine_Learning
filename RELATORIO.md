@@ -382,11 +382,14 @@ O experimento de convergência usa a mesma configuração de 5.1 (ordinal, alvo 
 
 **A pergunta do enunciado — "tem algum ponto que eles não se alteram mais?" — tem duas respostas diferentes, e a diferença entre elas é o resultado mais informativo deste projeto.** Se a pergunta for respondida olhando o custo, a convergência acontece quase imediatamente. Se for respondida olhando os parâmetros, ela leva quase todo o orçamento de 50.000 épocas:
 
-| marco | época | fração das 50.000 épocas |
-|---|---:|---:|
-| custo entra em 1% do valor final | **331** | 0,7% |
-| custo entra em 0,01% do valor final | **5.034** | 10,1% |
-| pesos entram em $\lVert w - w^{*}\rVert < 10^{-6}$ | **45.776** | 91,6% |
+| época | o que aconteceu |
+|---|---|
+| **331** | As **previsões** pararam de melhorar. Daqui em diante o modelo prevê preços praticamente iguais|
+| **5.034** | O custo não mexe mias|
+| **45.776** | Os **pesos** convergiram, estão finalmente estão abaixo do limite estipulado|
+| **50.000** | Fim das épocas|
+
+> Entre a época 331 e o fim, a previsão de uma pedra do teste saiu de US$ 5.109,60 para US$ 5.203,73 — uma mudança de **1,8%**. No mesmo intervalo, o peso de `y` saiu de 150,67 para 2.922,12 — uma mudança de **19 vezes**. O custo não enxerga essa reorganização porque os erros dos pesos se cancelam entre si na previsão: `x` e `y` são quase a mesma coluna, então errar para mais num e para menos no outro devolve a mesma resposta.
 
 O custo cai de 14.726.240,93 na primeira época registrada para 1.475.327,47 no fim — o valor final é 10,0% do inicial. Mas 99% dessa queda já ocorreu na época **331**. Quem monitorasse apenas a curva da esquerda na Figura 8 pararia o treino ali e concluiria, erradamente, que os parâmetros já estavam prontos. A curva da direita mostra que não: a distância até $w^{*}$ continua descendo em linha reta na escala log por mais de quarenta mil épocas, e só cruza $10^{-6}$ na época **45.776**, terminando em **1,018 × 10⁻⁷**. Entre a época 331 e a época 45.776 o custo praticamente não se move e os pesos se movem muito — inclusive os pesos de `x`, `y` e `z`, que são exatamente os atributos identificados em 5.1 como os de determinação mais difícil.
 
